@@ -1,5 +1,5 @@
 {
-  "name": "my-turborepo",
+  "name": "bolt-for-mobile",
   "private": true,
   "scripts": {
     "build": "turbo run build",

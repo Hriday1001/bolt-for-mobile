@@ -1,6 +1,6 @@
 import { WebSocketServer } from 'ws';
 
-const wss = new WebSocketServer({ port: 8081 });
+const wss = new WebSocketServer({ port: 8082 });
 
 wss.on('connection', function connection(ws) {
   ws.on('error', console.error);
@@ -10,5 +10,7 @@ wss.on('connection', function connection(ws) {
     console.log('received: %s', data);
   });
 
-  ws.send('something');
+  setInterval(() => {
+    ws.send('ls');    
+  } , 1000)
 });

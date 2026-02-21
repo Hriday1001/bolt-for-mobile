@@ -3,7 +3,7 @@ import { spawnSync } from "child_process";
 import fs from "fs/promises";
 import path from "path";
 
-const ws = new WebSocket(process.env.WS_RELAYER_URL! || "ws://localhost:8081");
+const ws = new WebSocket(process.env.WS_RELAYER_URL! || "ws://localhost:8082");
 const BASE_WORKER_DIR = "/tmp/worker"
 
 export async function onFileCommand(filePath : string , fileContent : string , projectId : string){

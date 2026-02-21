@@ -1,4 +1,4 @@
-FROM codercom/code-server:latest
+FROM codercom/code-server:4.108.1
 
 USER root
 RUN apt-get update \
@@ -15,5 +15,9 @@ RUN groupmod -g $GROUP_ID coder \
     && usermod -u $USER_ID -g $GROUP_ID coder
 
 EXPOSE 8080
+
+COPY extension/bolt-command-exec/bolt-command-exec-0.0.2.vsix /tmp/worker/
+
+RUN code-server --install-extension /tmp/worker/bolt-command-exec-0.0.2.vsix
 
 CMD ["code-server", "--auth", "none", "--bind-addr", "0.0.0.0:8080", "--disable-telemetry", "/tmp/worker"]

@@ -33,7 +33,7 @@ export class ArtifactProcessor{
         }
 
         const latestActionType = this.currentArtifact.split("\n")[latestActionStart]!.split("type=")[1]!.split(" ")[0]?.split(">")[0];
-        console.log(this.currentArtifact.split("\n").slice(latestActionStart , latestActionEnd+1))
+        // console.log(this.currentArtifact.split("\n").slice(latestActionStart , latestActionEnd+1))
         const latestActionContent = this.currentArtifact.split("\n").slice(latestActionStart , latestActionEnd+1).join("\n");
         // console.log(latestActionContent)
 

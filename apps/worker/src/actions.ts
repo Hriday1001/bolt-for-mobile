@@ -23,7 +23,7 @@ export async function onFileCommand(filePath : string , fileContent : string , p
     await fs.writeFile(fullPath, fileContent);
 
     ws.send(JSON.stringify({
-        event : "admin",
+        event : "agent",
         data : {
             type : "update-file",
             content : fileContent,
@@ -59,7 +59,7 @@ export async function onShellCommand(shellCommand : string , projectId : string)
     }
 
     ws.send(JSON.stringify({
-        event : "admin",
+        event : "agent",
         data : {
             type : "shell-command",
             content : shellCommand,

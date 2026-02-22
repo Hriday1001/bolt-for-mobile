@@ -6,11 +6,7 @@ wss.on('connection', function connection(ws) {
   ws.on('error', console.error);
 
   ws.on('message', function message(data) {
-    ws.send(data)
+    ws.send((data.toString()));
     console.log('received: %s', data);
   });
-
-  setInterval(() => {
-    ws.send('ls');    
-  } , 1000)
 });

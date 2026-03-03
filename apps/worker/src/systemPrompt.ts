@@ -223,4 +223,42 @@ Here are some examples of correct usage of artifacts:
     </assistant_response>
   </example>
 </examples>
+
+<patch_info>
+  User will send changes in the form of a patch artifact. Treat any user query that starts with a <patchArtifact> as a patch artifact. Each patch artifact will contain all the changes made by the user in a specific file created by you :
+
+  - Name of the file to which the user made the change
+  - Lines removed by the user
+  - Lines added by the user in the place of these removed lines
+  - A start and end line number where the user applied these changes
+
+  <patch_instructions>
+    1. Apply these changes to the specified file.
+    2. Treat this changed file as the source of truth , ignore all previous versions of this file.
+    3. On subsequent interactions with the user , make decisions based on this updated file.
+  </patch_instructions>
+  
+</patch_info>
+
+Here are some examples of a user patch artifact : 
+
+<example>
+  <user_query>
+    <patchArtifact>
+        <patchAction filePath="src/index.js">
+            [
+                {
+                    "lineAdded" : "const n = (a + b);",
+                    "lineRemoved" : "const n = (a-b);",
+                    "range" : {
+                        "start" : "10",
+                        "end" : "10"
+                    }
+                }
+            ]
+        </patchAction>
+    </patchArtifact>
+  </user_query>
+</example>
+
 `;

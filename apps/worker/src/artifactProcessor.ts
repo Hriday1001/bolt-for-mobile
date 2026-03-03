@@ -52,3 +52,40 @@ export class ArtifactProcessor{
         }
     }
 }
+
+/*
+    <patchArtifact>
+        <patchAction filePath="src/index.js">
+            [
+                {
+                    "lineAdded" : "",
+                    "lineRemoved" : "",
+                    "range" : {
+                        "start" : "",
+                        "end" : ""
+                    }
+                }
+            ]
+        </patchAction>
+    </patchArtifact>
+*/
+
+type PatchItem = {
+  lineAdded: string
+  lineRemoved: string
+  range: {
+    start : number,
+    end : number
+  }
+}
+
+export function patchProcessor(patchedFile : string , patchContents : PatchItem): string {
+
+  const patchJson = JSON.stringify(patchContents)
+
+  return `<patchArtifact>
+    <patchAction filePath="${patchedFile}">
+${patchJson}
+    </patchAction>
+</patchArtifact>`
+}

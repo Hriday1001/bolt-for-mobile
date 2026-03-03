@@ -4,6 +4,7 @@ import * as path from 'path';
 import {diffTrimmedLines} from 'diff';
 
 let fileContentMap: Map<string, string> = new Map();
+let projectId : string = "";
 
 async function ensureFileExists(filePath: string, content: string = '') : Promise<vscode.Uri> {
 	try {
@@ -45,10 +46,17 @@ export async function activate(context: vscode.ExtensionContext) {
 	});
 
 	ws.addEventListener('message', async event => {
-		const command = JSON.parse(event.data);
-		console.log(command);
-		if(command.event === "agent"){
-			const data = command.data;
+		const action = JSON.parse(event.data);
+		if(action.event === "chatSent"){
+			fileContentMap.clear();
+			const tabs: vscode.Tab[] = vscode.window.tabGroups.all.map(tg => tg.tabs).flat();
+			for(var tab of tabs){
+				await vscode.window.tabGroups.close(tab);
+			}
+		}
+		if(action.event === "agent"){
+			const data = action.data;
+			projectId = action.data.project;
 
 			if(data.type === "update-file"){
 				const fileUri = await ensureFileExists(data.path , data.content);
@@ -120,7 +128,8 @@ export async function activate(context: vscode.ExtensionContext) {
 				data : {
 					type : "userPatch",
 					path : fileUri.fsPath,
-					content : changes
+					content : changes,
+					project : projectId
 				}
 			}));
 		}

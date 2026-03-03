@@ -2,7 +2,7 @@
   "name": "bolt-command-exec",
   "displayName": "bolt-command-exec",
   "description": "",
-  "version": "0.0.2",
+  "version": "0.0.4",
   "engines": {
     "vscode": "1.108.1"
   },

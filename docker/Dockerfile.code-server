@@ -16,8 +16,8 @@ RUN groupmod -g $GROUP_ID coder \
 
 EXPOSE 8080
 
-COPY extension/bolt-command-exec/bolt-command-exec-0.0.2.vsix /tmp/worker/
+COPY extension/bolt-command-exec/bolt-command-exec-0.0.4.vsix /tmp/worker/
 
-RUN code-server --install-extension /tmp/worker/bolt-command-exec-0.0.2.vsix
+RUN code-server --install-extension /tmp/worker/bolt-command-exec-0.0.4.vsix
 
 CMD ["code-server", "--auth", "none", "--bind-addr", "0.0.0.0:8080", "--disable-telemetry", "/tmp/worker"]

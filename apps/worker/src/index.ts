@@ -3,12 +3,13 @@ import cors from "cors"
 import { GoogleGenAI } from "@google/genai";
 import prisma from "@repo/db/client";
 import { ArtifactProcessor } from "./artifactProcessor";
-import { onFileCommand, onShellCommand } from "./actions";
+import { initWebSocket , onFileCommand, onShellCommand } from "./actions";
 import { systemPrompt } from "./systemPrompt";
 
 const app = express();
 app.use(express.json());
 app.use(cors());
+const ws = initWebSocket();
 
 app.post("/prompt" , async (req,res)=>{
     const {prompt , projectId} = req.body;
@@ -31,12 +32,24 @@ app.post("/prompt" , async (req,res)=>{
         }
     });
 
+    const patchHistory = await prisma.patch.findMany({
+        where : {
+            projectId : projectId
+        }
+    })
+
     let currentArtifact : string = "";
     const artifactProcessor = new ArtifactProcessor(currentArtifact , (filePath , fileContent) => onFileCommand(filePath , fileContent , projectId) , (shellCommand) => onShellCommand(shellCommand , projectId));
 
     const promptHistoryUser = promptHistory.filter((prompt : any) => prompt.type === 'USER').map((prompt : any) => {
         return {
             text : prompt.content
+        }
+    })
+
+    const patchHistoryUser = patchHistory.map((patch : any) => {
+        return {
+            text : patch.content
         }
     })
 
@@ -55,12 +68,23 @@ app.post("/prompt" , async (req,res)=>{
         });
     }
 
+    if (patchHistoryUser.length > 0) {
+        promptHistoryNormalized.push({
+            role: "user",
+            parts: patchHistoryUser,
+        });
+    }
+
     if (promptHistorySystem.length > 0) {
         promptHistoryNormalized.push({
             role: "model",
             parts: promptHistorySystem,
         });
     }
+
+    ws.send(JSON.stringify({
+        event : "chatSent",
+    }))
 
     const chat = client.chats.create({
         model : "gemini-2.5-flash",
@@ -73,6 +97,10 @@ app.post("/prompt" , async (req,res)=>{
     const response = await chat.sendMessageStream({
         message : systemPrompt,
     })
+
+    ws.send(JSON.stringify({
+        event : "responseReceived",
+    }))
 
     for await (const chunk of response) {
         // console.log("Response from model : ")

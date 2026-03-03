@@ -1,10 +1,70 @@
 import prisma from "@repo/db/client";
-import { spawnSync } from "child_process";
-import fs from "fs/promises";
-import path from "path";
+import { patchProcessor } from "./artifactProcessor";
+import WebSocket from "ws";
 
-const ws = new WebSocket(process.env.WS_RELAYER_URL! || "ws://localhost:8082");
 const BASE_WORKER_DIR = "/tmp/worker"
+
+let ws: WebSocket | null = null;
+
+export function initWebSocket() {
+    if (ws) return ws;
+
+    ws = new WebSocket("ws://localhost:8082");
+
+    ws.addEventListener("open", () => {
+        console.log("WS OPEN");
+    });
+
+    ws.addEventListener("close", () => {
+        console.log("WS CLOSED");
+    });
+
+    ws.addEventListener("error", (err) => {
+        console.error("WS ERROR:", err);
+    });
+
+    ws.addEventListener('message' , async (e)=>{
+        console.log("Received : " , JSON.parse(e.data.toString()))
+        const action = JSON.parse(e.data.toString());
+        if(action.event === "user" && action.data.type === "userPatch"){
+            const patchContents = action.data.content;
+            const file = action.data.path;
+            const contents = file.split('/tmp/worker/')
+            const patchContentsNormalized = patchProcessor(contents[1] , patchContents);
+            console.log(patchContentsNormalized);
+            const projectId = action.data.project;
+
+            const existingPatch = await prisma.patch.findFirst({
+                where : {
+                    projectId : projectId,
+                    file : file
+                }
+            })
+
+            if(existingPatch){
+                await prisma.patch.update({
+                    where : {
+                        id : existingPatch.id
+                    },
+                    data : {
+                        content : patchContentsNormalized
+                    }
+                })
+            }
+            else{
+                await prisma.patch.create({
+                    data : {
+                        file : file,
+                        content : patchContentsNormalized,
+                        projectId : projectId
+                    }
+                })
+            }
+        }
+    })
+
+    return ws;
+}
 
 export async function onFileCommand(filePath : string , fileContent : string , projectId : string){
     await prisma.action.create({
@@ -14,22 +74,17 @@ export async function onFileCommand(filePath : string , fileContent : string , p
         }
     })
 
-    const fullPath = path.join(BASE_WORKER_DIR , filePath);
-    if (!fullPath.startsWith(BASE_WORKER_DIR)) {
-        throw new Error("Invalid file path");
+    if(ws){
+        ws.send(JSON.stringify({
+            event : "agent",
+            data : {
+                type : "update-file",
+                content : fileContent,
+                path : `${BASE_WORKER_DIR}/${filePath}`,
+                project : projectId
+            }
+        }))
     }
-    const dir = path.dirname(fullPath);
-    await fs.mkdir(dir, { recursive: true });
-    await fs.writeFile(fullPath, fileContent);
-
-    ws.send(JSON.stringify({
-        event : "agent",
-        data : {
-            type : "update-file",
-            content : fileContent,
-            path : `${BASE_WORKER_DIR}/${filePath}`
-        }
-    }))
 }
 
 export async function onShellCommand(shellCommand : string , projectId : string){
@@ -40,29 +95,15 @@ export async function onShellCommand(shellCommand : string , projectId : string)
         }
     })
 
-    try {
-        const cleanCommand = shellCommand.trim();
-        const parts = cleanCommand.split(/\s+/);
-        const command = parts[0];   
-        const args = parts.slice(1);
-        const result = spawnSync(command as string, args, {
-            cwd : BASE_WORKER_DIR
-        });
-        if (result.error) {
-            console.error('Error spawning process : ', result.error);
-        } else {
-            console.log('stdout : ', result.stdout);
-            console.error('stderr : ', result.stderr);
-        }
-    } catch (error) {
-        console.error('Failed executing shell command : ', error);
+    if(ws){
+        ws.send(JSON.stringify({
+            event : "agent",
+            data : {
+                type : "shell-command",
+                content : shellCommand.trim(),
+                project : projectId
+            }
+        }))
     }
-
-    ws.send(JSON.stringify({
-        event : "agent",
-        data : {
-            type : "shell-command",
-            content : shellCommand,
-        }
-    }))
+    
 }

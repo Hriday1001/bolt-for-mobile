@@ -19,7 +19,9 @@
     "@repo/db": "workspace:*",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.5",
+    "@types/ws": "^8.18.1",
     "cors": "^2.8.5",
-    "express": "^5.1.0"
+    "express": "^5.1.0",
+    "ws": "^8.18.3"
   }
 }

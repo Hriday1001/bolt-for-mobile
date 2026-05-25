@@ -1,0 +1,18 @@
+FROM ghcr.io/pnpm/pnpm:latest
+RUN pnpm runtime set node 24 -g
+
+WORKDIR /app
+
+COPY ./apps/worker ./apps/worker
+COPY ./packages ./packages
+COPY ./package.json .
+COPY ./pnpm-*.yaml .
+COPY ./turbo.json .
+
+RUN pnpm install --frozen-lockfile
+
+RUN pnpm run db:generate
+
+EXPOSE 3002
+
+CMD ["pnpm" , "run" , "worker"]

@@ -25,6 +25,7 @@ model Project {
   actions Action[]
   userPatches Patch[]
   userId String
+  type ProjectType
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
@@ -58,4 +59,8 @@ enum PromptType{
   USER
   SYSTEM
   INIT
+}
+
+enum ProjectType{
+  EXPO
 }

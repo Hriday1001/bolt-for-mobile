@@ -135,4 +135,4 @@ Learn more about the power of Turborepo:
 - [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
 
 ## Todos
-Resolve bundle 404 issue
+Have to refresh to get commands to execute , add garbage collection for dev env , ui improvements , add other project types

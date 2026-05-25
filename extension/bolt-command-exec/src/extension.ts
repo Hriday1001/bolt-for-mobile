@@ -30,8 +30,8 @@ async function ensureFileExists(filePath: string, content: string = '') : Promis
 
 export async function activate(context: vscode.ExtensionContext) {
 
-	const ws = new WebSocket("ws://host.docker.internal:8082");
-	// const ws = new WebSocket("ws://localhost:8082");
+	// const ws = new WebSocket("ws://host.docker.internal:8082");
+	const ws = new WebSocket("ws://localhost:8082");
 
 	vscode.window.showInformationMessage('Hello World from bolt-command-exec!');
 		

@@ -13,5 +13,14 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@repo/db" : "workspace:*",
+    "@kubernetes/client-node": "^1.4.0",
+    "@repo/auth": "workspace:*",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.5",
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  }
 }

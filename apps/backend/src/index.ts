@@ -1,7 +1,8 @@
+/// <reference path="../../../types/global.d.ts" />
 import prisma from "@repo/db/client";
 import express from "express";
 import cors from "cors";
-import { AuthMiddleware } from "./middleware";
+import {AuthMiddleware} from "@repo/auth"
 
 const app = express()
 app.use(express.json())
@@ -22,7 +23,8 @@ app.post("/project" , AuthMiddleware , async (req : CustomRequest, res) => {
                         type : "INIT"
                     }
                 },
-                "userId" : userId
+                "userId" : userId,
+                "type" : "EXPO"
             }
         })
         res.status(200).json({

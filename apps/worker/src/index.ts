@@ -11,6 +11,12 @@ app.use(express.json());
 app.use(cors());
 const ws = initWebSocket();
 
+app.get("/health", async (req, res) => {
+    await new Promise((r) => setTimeout(r , 5000));
+
+    res.sendStatus(200);
+});
+
 app.post("/prompt" , async (req,res)=>{
     const {prompt , projectId} = req.body;
     const client = new GoogleGenAI({apiKey : process.env.GEMINI_API_KEY});

@@ -16,6 +16,8 @@ const PROJECT_BASEFOLDER_MAP = {
     "EXPO" : "/tmp/expo-base-app"
 }
 
+const activeProjects : {userId : string , projectId : string}[] = []
+
 const kc = new k8s.KubeConfig();
 kc.loadFromDefault();
 
@@ -37,57 +39,64 @@ async function init(){
         }
     }
 
-    try {
-        await k8sV1Api.createNamespacedDaemonSet({namespace : "user-projects" , body : {
-            metadata : {
-                name : "prepullimage"
-            },
-            spec : {
-                selector : {
-                    matchLabels : {
-                        name : "prepullimage"
-                    }
+    const daemonsets = await k8sV1Api.listNamespacedDaemonSet({namespace : "user-projects"})
+    const project_ds= daemonsets.items.filter((ds) => ds.metadata?.name === "prepullimage")
+    const dsExists = project_ds.length > 0
+    console.log(dsExists)
+
+    if(!dsExists){
+        try {
+            await k8sV1Api.createNamespacedDaemonSet({namespace : "user-projects" , body : {
+                metadata : {
+                    name : "prepullimage"
                 },
-                template : {
-                    metadata : {
-                        labels : {
+                spec : {
+                    selector : {
+                        matchLabels : {
                             name : "prepullimage"
                         }
                     },
-                    spec : {
-                        initContainers :[
-                            {
-                                name : "prepullimage-code",
-                                image : "vampweeknd2021/code-server-custom-amd64:v2",
-                                imagePullPolicy : "IfNotPresent",
-                                command : ["sleep" , "1"]
-                            },
-                            {
-                                name : "prepullimage-worker",
-                                image : "vampweeknd2021/bolt-worker:v1",
-                                imagePullPolicy : "IfNotPresent",
-                                command : ["sleep" , "1"]
-                            },
-                            {
-                                name : "prepullimage-ws-relayer",
-                                image : "vampweeknd2021/bolt-ws-relayer:v1",
-                                imagePullPolicy : "IfNotPresent",
-                                command : ["sleep" , "1"]
-                            },
-                        ],
-                        containers : [
-                            {
-                                name : "pause-container",
-                                image : "gcr.io/google_containers/pause"
+                    template : {
+                        metadata : {
+                            labels : {
+                                name : "prepullimage"
                             }
-                        ]
+                        },
+                        spec : {
+                            initContainers :[
+                                {
+                                    name : "prepullimage-code",
+                                    image : "vampweeknd2021/code-server-custom-amd64:v2",
+                                    imagePullPolicy : "IfNotPresent",
+                                    command : ["sleep" , "1"]
+                                },
+                                {
+                                    name : "prepullimage-worker",
+                                    image : "vampweeknd2021/bolt-worker:v2",
+                                    imagePullPolicy : "IfNotPresent",
+                                    command : ["sleep" , "1"]
+                                },
+                                {
+                                    name : "prepullimage-ws-relayer",
+                                    image : "vampweeknd2021/bolt-ws-relayer:v1",
+                                    imagePullPolicy : "IfNotPresent",
+                                    command : ["sleep" , "1"]
+                                },
+                            ],
+                            containers : [
+                                {
+                                    name : "pause-container",
+                                    image : "gcr.io/google_containers/pause"
+                                }
+                            ]
+                        }
                     }
                 }
-            }
-        }})
-    } catch (error) {
-        console.log(error);
-        return;
+            }})
+        } catch (error) {
+            console.log(error);
+            return;
+        }
     }
 }
 
@@ -103,6 +112,7 @@ async function createProjectDeployment(projectId : string , userId : string) {
                     name : `user-${userId.split('user_')[1]?.toLowerCase()}-project-${projectId}-deployment`
                 },
                 spec : {
+                    minReadySeconds : 5,
                     replicas : 1,
                     selector : {
                         matchLabels : {
@@ -127,7 +137,7 @@ async function createProjectDeployment(projectId : string , userId : string) {
                                 },
                                 {
                                     name : "worker",
-                                    image : "vampweeknd2021/bolt-worker:v1",
+                                    image : "vampweeknd2021/bolt-worker:v2",
                                     imagePullPolicy : "IfNotPresent",
                                     ports : [{containerPort : 3002}],
                                     env : [
@@ -200,19 +210,26 @@ async function createProjectDeployment(projectId : string , userId : string) {
         return;
     }
 
-    await k8sCoreApi.createNamespacedService({namespace : 'user-projects' , body : {
-        metadata : {
-            name : `worker-${userId.split('user_')[1]?.toLowerCase().slice(0,8)}-${projectId.slice(0,8)}`
-        },
-        spec : {
-            selector : {
-                user : userId.split('user_')[1]!.toLowerCase(),
-                project : projectId
+    try {
+        await k8sCoreApi.createNamespacedService({namespace : 'user-projects' , body : {
+            metadata : {
+                name : `worker-${userId.split('user_')[1]?.toLowerCase().slice(0,8)}-${projectId.slice(0,8)}`
             },
-            type : "NodePort",
-            ports : [{port : 8080 , targetPort : 3002 , nodePort : 30008, protocol : 'TCP' , name : 'worker'}]
-        }
-    }})
+            spec : {
+                selector : {
+                    user : userId.split('user_')[1]!.toLowerCase(),
+                    project : projectId
+                },
+                type : "NodePort",
+                ports : [{port : 3002 , targetPort : 3002 , nodePort : 30008, protocol : 'TCP' , name : 'worker'}]
+            }
+        }})
+    } catch (error) {
+        console.log(error);
+        return;
+    }
+
+    activeProjects.push({userId , projectId});
 }
 
 async function checkPodReady(projectId : string) {
@@ -318,3 +335,51 @@ app.get("/worker/:projectId" , AuthMiddleware , async (req : CustomRequest , res
 })
 
 app.listen(3003)
+
+async function deleteProjectResources(userId : string , projectId : string){
+    const deploymentName = `user-${userId.split('user_')[1]?.toLowerCase()}-project-${projectId}-deployment`;
+    
+    try {
+        await k8sV1Api.deleteNamespacedDeployment({
+            namespace: "user-projects",
+            name: deploymentName
+        });
+
+        const serviceNames = [
+            `code-${userId.split('user_')[1]?.toLowerCase().slice(0, 8)}-${projectId.slice(0, 8)}`,
+            `preview-${userId.split('user_')[1]?.toLowerCase().slice(0, 8)}-${projectId.slice(0, 8)}`,
+            `worker-${userId.split('user_')[1]?.toLowerCase().slice(0, 8)}-${projectId.slice(0, 8)}`
+        ];
+
+        for (const serviceName of serviceNames) {
+            try {
+                await k8sCoreApi.deleteNamespacedService({
+                    namespace: "user-projects",
+                    name: serviceName
+                });
+            } catch (error) {
+                console.log(`Service ${serviceName} not found or already deleted`);
+            }
+        }
+
+        const index = activeProjects.findIndex((project) => (project.projectId === projectId && project.userId === userId))
+        if(index != -1){
+            activeProjects.splice(index , 1);
+        }
+        console.log(`Cleaned up resources for project ${projectId}`);
+    } catch (error) {
+        console.error(`Error deleting resources for project ${projectId}:`, error);
+    }
+}
+
+async function shutdown (){
+    console.log("Cleaning resources on shutdown")
+    for (const {userId , projectId} of activeProjects){
+        console.log({userId , projectId});
+        await deleteProjectResources(userId , projectId);
+    }
+    process.exit(0)
+}
+
+process.on("SIGINT" , shutdown);
+process.on("SIGTERM" , shutdown);
